@@ -4,6 +4,8 @@ import (
 	"time"
 
 	redis "gopkg.in/redis.v5"
+
+	"github.com/perenecabuto/redis-dist-lock/locker"
 )
 
 func main() {
