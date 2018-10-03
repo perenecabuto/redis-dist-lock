@@ -36,27 +36,21 @@ func New(client *redis.Client, retryInterval time.Duration) *RedisLocker {
 
 func (m *RedisLocker) RunWhenReady(ctx context.Context, taskName string, task func(context.Context)) error {
 	host, err := m.GetHostRunning(taskName)
-	running := err != redis.Nil
-	if running {
-		if err != nil {
-			log.Println("[RedisLocker]", "error to running worker host name:", err.Error())
-			return err
-		}
+	lockIsFree := err == redis.Nil
+	if !lockIsFree && err != nil {
+		return err
+	}
+	if !lockIsFree {
 		if host == m.hostname {
 			m.NotifyStoppedRunning(taskName)
-		} else {
-			log.Println("[RedisLocker]", "already running on:", host)
 		}
-
 		retry := time.NewTimer(m.retryInterval)
+		defer retry.Stop()
 		select {
 		case <-retry.C:
 		case <-ctx.Done():
 			return nil
 		}
-
-		retry.Stop()
-		log.Println("[RedisLocker]", "retrying to run on:", m.hostname)
 		return m.RunWhenReady(ctx, taskName, task)
 	}
 
