@@ -65,7 +65,6 @@ func (m *RedisLocker) RunWhenReady(ctx context.Context, taskName string, task fu
 	ticker := m.heartbeat(ctx, taskName)
 	defer ticker.Stop()
 	task(ctx)
-	m.NotifyStoppedRunning(taskName)
 	return nil
 }
 
@@ -96,7 +95,10 @@ func (m *RedisLocker) NotifyStoppedRunning(taskName string) error {
 func (m *RedisLocker) heartbeat(ctx context.Context, taskName string) *time.Ticker {
 	ticker := time.NewTicker(notificationTimeout)
 	go func() {
-		defer log.Println("[RedisLocker]", "stopping <", taskName, "> heartbeat on host", m.hostname)
+		defer func() {
+			log.Println("[RedisLocker]", "stopping <", taskName, "> heartbeat on host", m.hostname)
+			m.NotifyStoppedRunning(taskName)
+		}()
 		for {
 			select {
 			case _, ok := <-ticker.C:
